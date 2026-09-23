@@ -4,7 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         SettingsForm()
-            .frame(width: 520, height: 560)
+            .frame(width: 520, height: 620)
             .navigationTitle("Clip Settings")
     }
 }
@@ -44,6 +44,14 @@ private struct SettingsForm: View {
 
             Section("History") {
                 Toggle("Pause clipboard capture", isOn: Bindable(settings).isPaused)
+                Toggle("Show content previews", isOn: Bindable(settings).showContentPreviews)
+                Text("Show thumbnails for images, PDFs, and other media. Text items keep a type icon.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle("Compact rows", isOn: Bindable(settings).compactListRows)
+                Text("Show each item on a single line.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Stepper(value: Bindable(settings).historyLimit, in: 20...2000, step: 20) {
                     Text("Keep \(settings.historyLimit) items")
                 }

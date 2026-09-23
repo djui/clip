@@ -12,6 +12,8 @@ final class AppSettings {
         static let ignoredBundleIDs = "ignoredBundleIDs"
         static let showStatusItem = "showStatusItem"
         static let holdCommandV = "holdCommandV"
+        static let showContentPreviews = "showContentPreviews"
+        static let compactListRows = "compactListRows"
         static let openHotkeyKeyCode = "openHotkeyKeyCode"
         static let openHotkeyModifiers = "openHotkeyModifiers"
         static let plainHotkeyKeyCode = "plainHotkeyKeyCode"
@@ -44,6 +46,14 @@ final class AppSettings {
             UserDefaults.standard.set(holdCommandV, forKey: Keys.holdCommandV)
             AppModel.shared.applyHoldCommandV()
         }
+    }
+
+    var showContentPreviews: Bool {
+        didSet { UserDefaults.standard.set(showContentPreviews, forKey: Keys.showContentPreviews) }
+    }
+
+    var compactListRows: Bool {
+        didSet { UserDefaults.standard.set(compactListRows, forKey: Keys.compactListRows) }
     }
 
     var openShortcut: KeyboardShortcut {
@@ -88,6 +98,16 @@ final class AppSettings {
             holdCommandV = true
         } else {
             holdCommandV = UserDefaults.standard.bool(forKey: Keys.holdCommandV)
+        }
+        if UserDefaults.standard.object(forKey: Keys.showContentPreviews) == nil {
+            showContentPreviews = true
+        } else {
+            showContentPreviews = UserDefaults.standard.bool(forKey: Keys.showContentPreviews)
+        }
+        if UserDefaults.standard.object(forKey: Keys.compactListRows) == nil {
+            compactListRows = false
+        } else {
+            compactListRows = UserDefaults.standard.bool(forKey: Keys.compactListRows)
         }
         openShortcut = Self.loadOptionalShortcut(
             keyCodeKey: Keys.openHotkeyKeyCode,

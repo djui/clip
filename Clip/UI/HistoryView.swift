@@ -18,7 +18,7 @@ struct HistoryView: View {
             footer
         }
         .frame(width: 440, height: 520)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .modifier(HistoryPanelChrome())
         .onChange(of: store.searchFocusGeneration) { _, _ in
             searchFocused = true
         }
@@ -78,6 +78,7 @@ struct HistoryView: View {
                 }
                 .padding(8)
             }
+            .scrollContentBackground(.hidden)
             .onChange(of: store.scrollGeneration) { _, _ in
                 if let id = store.selectedItem?.id {
                     proxy.scrollTo(id, anchor: .center)
@@ -105,5 +106,15 @@ struct HistoryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+    }
+}
+
+private struct HistoryPanelChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.background(.clear)
+        } else {
+            content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
     }
 }

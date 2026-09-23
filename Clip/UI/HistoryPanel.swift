@@ -79,25 +79,55 @@ final class HistoryPanelController {
         hosting.view.wantsLayer = true
         hosting.view.layer?.backgroundColor = NSColor.clear.cgColor
         let size = NSSize(width: 440, height: 520)
+        let cornerRadius: CGFloat = 18
+        let container = NSViewController()
+        container.addChild(hosting)
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView(frame: NSRect(origin: .zero, size: size))
+            glass.style = .regular
+            glass.cornerRadius = cornerRadius
+            glass.contentView = hosting.view
+            container.view = glass
+        } else {
+            container.view = hosting.view
+        }
         let panel = KeyablePanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        panel.contentViewController = hosting
+        panel.contentViewController = container
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         panel.hidesOnDeactivate = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        // Glass already provides depth; the window shadow draws a hard 1px rim on rounded panels.
+        panel.hasShadow = !isGlassPanel(container.view)
         panel.isMovableByWindowBackground = false
         panel.isReleasedWhenClosed = false
         panel.setContentSize(size)
+        if let contentView = panel.contentView {
+            contentView.wantsLayer = true
+            contentView.layer?.backgroundColor = NSColor.clear.cgColor
+            contentView.layer?.cornerRadius = cornerRadius
+            contentView.layer?.cornerCurve = .continuous
+            contentView.layer?.masksToBounds = true
+            contentView.layer?.borderWidth = 0
+            contentView.layer?.borderColor = nil
+        }
+        panel.invalidateShadow()
         self.panel = panel
         return panel
+    }
+
+    private func isGlassPanel(_ view: NSView) -> Bool {
+        if #available(macOS 26.0, *) {
+            return view is NSGlassEffectView
+        }
+        return false
     }
 
     private func frameNearMouse(size: NSSize) -> NSRect {

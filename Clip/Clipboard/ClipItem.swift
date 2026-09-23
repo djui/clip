@@ -65,10 +65,23 @@ struct ClipItem: Identifiable, Hashable {
         if let imagePath, let image = NSImage(contentsOfFile: imagePath) {
             return image
         }
-        if let url = fileURLs.first {
+        if let url = fileURLs.first(where: \.isVisualMedia) ?? fileURLs.first {
             return PreviewSupport.thumbnail(for: url)
         }
         return nil
+    }
+
+    var hasMediaPreview: Bool {
+        if kind == .color { return true }
+        if kind == .image { return previewImage != nil }
+        if let imagePath, FileManager.default.fileExists(atPath: imagePath) {
+            return true
+        }
+        return fileURLs.contains(where: \.isVisualMedia)
+    }
+
+    func listThumbnail(pixelSize: CGFloat) -> NSImage? {
+        previewImage?.resizedToFit(maxPixel: pixelSize)
     }
 
     var richText: NSAttributedString? {

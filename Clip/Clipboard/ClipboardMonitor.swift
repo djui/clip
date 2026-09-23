@@ -72,10 +72,13 @@ final class ClipboardMonitor {
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], !urls.isEmpty {
             let files = urls.filter(\.isFileURL)
             if !files.isEmpty {
-                let thumbURL = files.first { $0.isImageFile || $0.isPDFFile }
-                let thumb = thumbURL.flatMap { PreviewSupport.thumbnail(for: $0) }
-                let path = thumb.flatMap { $0.pngData() }.flatMap { store.saveMedia(data: $0, ext: "png") }
-                let kind: ClipItem.Kind = (files.count == 1 && files[0].isImageFile) ? .image : .file
+                let mediaURL = files.first(where: \.isVisualMedia)
+                let thumb = mediaURL.flatMap { PreviewSupport.thumbnail(for: $0, pixelSize: CGSize(width: 256, height: 256)) }
+                let path = thumb.flatMap { $0.pngDataFitting(maxPixel: 256) }.flatMap { store.saveMedia(data: $0, ext: "png") }
+                let kind: ClipItem.Kind = {
+                    if files.count == 1, files[0].isImageFile { return .image }
+                    return .file
+                }()
                 return ClipItem(
                     id: UUID(),
                     createdAt: Date(),
@@ -183,8 +186,10 @@ final class ClipboardMonitor {
         let data = pasteboard.data(forType: .png)
             ?? pasteboard.data(forType: .tiff)
             ?? pasteboard.data(forType: .init("public.jpeg"))
-        guard let data, let image = NSImage(data: data), let png = image.pngData() else { return nil }
-        let path = store.saveMedia(data: png, ext: "png")
+        guard let data, let image = NSImage(data: data) else { return nil }
+        let png = image.pngDataFitting(maxPixel: 1024)
+        let saved = png ?? data
+        let path = store.saveMedia(data: saved, ext: png != nil ? "png" : "tiff")
         let files = (pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] ?? []).filter(\.isFileURL)
         return ClipItem(
             id: UUID(),
@@ -198,7 +203,7 @@ final class ClipboardMonitor {
             sourceBundleID: sourceID,
             sourceAppName: sourceName,
             isPinned: false,
-            contentHash: ClipItem.hash(kind: .image, text: nil, imageData: png, files: files, colorHex: nil)
+            contentHash: ClipItem.hash(kind: .image, text: nil, imageData: saved, files: files, colorHex: nil)
         )
     }
 }
