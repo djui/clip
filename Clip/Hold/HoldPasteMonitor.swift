@@ -113,6 +113,10 @@ final class HoldPasteMonitor {
     }
 
     private func handleKeyDown(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Releasing Command while V is still down posts a new V keyDown with no modifier.
+        if case .consumed = arm, isV(event) {
+            return nil
+        }
         let commandV = isPlainCommandV(event)
         if case .pending = arm, !commandV {
             finishPending(replay: true)
@@ -134,6 +138,10 @@ final class HoldPasteMonitor {
     }
 
     private func handleKeyUp(_ event: CGEvent) -> Unmanaged<CGEvent>? {
+        if case .consumed = arm, isV(event) {
+            arm = .idle
+            return nil
+        }
         guard isPlainCommandV(event) else { return Unmanaged.passUnretained(event) }
         switch arm {
         case .idle:
@@ -160,7 +168,7 @@ final class HoldPasteMonitor {
             return Unmanaged.passUnretained(event)
         }
         switch arm {
-        case .idle:
+        case .idle, .consumed:
             return Unmanaged.passUnretained(event)
         case .pending(let wasOpen):
             cancelTimer()
@@ -172,9 +180,6 @@ final class HoldPasteMonitor {
             } else {
                 replayCommandV()
             }
-            return Unmanaged.passUnretained(event)
-        case .consumed:
-            arm = .idle
             return Unmanaged.passUnretained(event)
         }
     }
@@ -225,8 +230,12 @@ final class HoldPasteMonitor {
         SyntheticPaste.postCommandV()
     }
 
-    private func isCommandV(_ event: CGEvent) -> Bool {
+    private func isV(_ event: CGEvent) -> Bool {
         event.getIntegerValueField(.keyboardEventKeycode) == keyV
+    }
+
+    private func isCommandV(_ event: CGEvent) -> Bool {
+        isV(event)
     }
 
     private func isPlainCommandV(_ event: CGEvent) -> Bool {

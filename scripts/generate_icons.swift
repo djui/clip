@@ -34,6 +34,16 @@ func writePNG(size: Int, url: URL) throws {
     try data.write(to: url)
 }
 
+func srgb(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1) -> CGColor {
+    NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha).cgColor
+}
+
+func fillRound(_ ctx: CGContext, _ rect: CGRect, radius: CGFloat, color: CGColor) {
+    ctx.setFillColor(color)
+    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil))
+    ctx.fillPath()
+}
+
 func drawIcon(size: CGFloat) {
     let ctx = NSGraphicsContext.current!.cgContext
     ctx.saveGState()
@@ -44,36 +54,46 @@ func drawIcon(size: CGFloat) {
     ctx.scaleBy(x: 1, y: -1)
 
     let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
-    let top = NSColor(srgbRed: 0.97, green: 0.97, blue: 0.985, alpha: 1).cgColor
-    let bottom = NSColor(srgbRed: 0.82, green: 0.82, blue: 0.86, alpha: 1).cgColor
-    let gradient = CGGradient(colorsSpace: colorSpace, colors: [top, bottom] as CFArray, locations: [0, 1])!
+    let gradient = CGGradient(
+        colorsSpace: colorSpace,
+        colors: [srgb(0.48, 0.56, 1.00), srgb(0.16, 0.20, 0.58)] as CFArray,
+        locations: [0, 1]
+    )!
     ctx.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size), options: [])
 
-    let body = CGRect(x: size * 0.22, y: size * 0.20, width: size * 0.56, height: size * 0.62)
-    let clip = CGRect(x: size * 0.36, y: size * 0.12, width: size * 0.28, height: size * 0.16)
-    let radius = size * 0.06
-    ctx.setFillColor(NSColor.black.cgColor)
-    ctx.addPath(CGPath(roundedRect: body, cornerWidth: radius, cornerHeight: radius, transform: nil))
-    ctx.fillPath()
-    ctx.addPath(CGPath(roundedRect: clip, cornerWidth: size * 0.03, cornerHeight: size * 0.03, transform: nil))
-    ctx.fillPath()
-
-    let hole = clip.insetBy(dx: size * 0.07, dy: size * 0.045)
-    ctx.setBlendMode(.destinationOut)
-    ctx.addPath(CGPath(roundedRect: hole, cornerWidth: size * 0.015, cornerHeight: size * 0.015, transform: nil))
-    ctx.fillPath()
-    ctx.setBlendMode(.normal)
-
-    ctx.setFillColor(NSColor.white.withAlphaComponent(0.92).cgColor)
-    let lineX = body.minX + size * 0.08
-    let lineW = body.width - size * 0.16
-    let lineH = max(2, size * 0.035)
-    for (index, factor) in [0.30, 0.46, 0.62].enumerated() {
-        let width = index == 2 ? lineW * 0.62 : lineW
-        let line = CGRect(x: lineX, y: body.minY + body.height * factor, width: width, height: lineH)
-        ctx.addPath(CGPath(roundedRect: line, cornerWidth: lineH / 2, cornerHeight: lineH / 2, transform: nil))
+    let card = CGRect(x: size * 0.23, y: size * 0.284, width: size * 0.50, height: size * 0.52)
+    let radius = size * 0.058
+    let sheets: [(CGFloat, CGFloat, CGColor)] = [
+        (0.058, -0.088, srgb(0.78, 0.84, 0.96)),
+        (0.029, -0.044, srgb(0.90, 0.93, 0.98)),
+        (0, 0, srgb(0.99, 0.99, 1))
+    ]
+    for (dx, dy, color) in sheets {
+        let sheet = card.offsetBy(dx: size * dx, dy: size * dy)
+        ctx.setShadow(
+            offset: CGSize(width: 0, height: size * 0.012),
+            blur: size * 0.028,
+            color: srgb(0.05, 0.08, 0.22, 0.28)
+        )
+        fillRound(ctx, sheet, radius: radius, color: color)
     }
-    ctx.fillPath()
+    ctx.setShadow(offset: .zero, blur: 0, color: nil)
+
+    let lineH = size * 0.028
+    let lineX = card.minX + size * 0.07
+    let lineW = card.width - size * 0.14
+    let gap = size * 0.062
+    var lineY = card.minY + card.height * 0.40
+    if size >= 32 {
+        ctx.setFillColor(srgb(0.27, 0.36, 0.66, 0.72))
+        for widthFactor in [1.0, 1.0, 0.58] as [CGFloat] {
+            let line = CGRect(x: lineX, y: lineY, width: lineW * widthFactor, height: lineH)
+            ctx.addPath(CGPath(roundedRect: line, cornerWidth: lineH / 2, cornerHeight: lineH / 2, transform: nil))
+            lineY += gap
+        }
+        ctx.fillPath()
+    }
+
     ctx.restoreGState()
 }
 
@@ -85,22 +105,33 @@ func writeMenuBarPDF(url: URL) {
     ctx.beginPDFPage(nil)
     ctx.setShouldAntialias(true)
     ctx.setFillColor(NSColor.black.cgColor)
-    let body = CGRect(x: 3, y: 2, width: 12, height: 12)
-    let clip = CGRect(x: 6, y: 12.2, width: 6, height: 3.6)
-    ctx.addPath(CGPath(roundedRect: body, cornerWidth: 2, cornerHeight: 2, transform: nil))
-    ctx.fillPath()
-    ctx.addPath(CGPath(roundedRect: clip, cornerWidth: 1, cornerHeight: 1, transform: nil))
-    ctx.fillPath()
-    ctx.setBlendMode(.destinationOut)
-    let hole = clip.insetBy(dx: 1.4, dy: 0.9)
-    ctx.addPath(CGPath(roundedRect: hole, cornerWidth: 0.6, cornerHeight: 0.6, transform: nil))
-    ctx.fillPath()
-    let line = CGRect(x: 5.2, y: 5.2, width: 7.6, height: 1.3)
-    ctx.addPath(CGPath(roundedRect: line, cornerWidth: 0.6, cornerHeight: 0.6, transform: nil))
-    ctx.fillPath()
-    let line2 = CGRect(x: 5.2, y: 8.0, width: 5.2, height: 1.3)
-    ctx.addPath(CGPath(roundedRect: line2, cornerWidth: 0.6, cornerHeight: 0.6, transform: nil))
-    ctx.fillPath()
+    ctx.setStrokeColor(NSColor.black.cgColor)
+    ctx.setLineWidth(1.45)
+    ctx.setLineJoin(.round)
+    ctx.setLineCap(.round)
+
+    let front = CGRect(x: 1.15, y: 1.15, width: 11.15, height: 12.15)
+    let back = front.offsetBy(dx: 3.15, dy: 3.15)
+    let radius: CGFloat = 2.15
+
+    ctx.saveGState()
+    ctx.addRect(mediaBox)
+    let gap = front.insetBy(dx: -0.85, dy: -0.85)
+    ctx.addPath(CGPath(roundedRect: gap, cornerWidth: radius + 0.4, cornerHeight: radius + 0.4, transform: nil))
+    ctx.clip(using: .evenOdd)
+    ctx.addPath(CGPath(roundedRect: back, cornerWidth: radius, cornerHeight: radius, transform: nil))
+    ctx.strokePath()
+    ctx.restoreGState()
+
+    let lineH: CGFloat = 1.2
+    let lineX = front.minX + 2.0
+    let lineW = front.width - 4.0
+    let line1 = CGRect(x: lineX, y: front.midY - 1.7, width: lineW, height: lineH)
+    let line2 = CGRect(x: lineX, y: front.midY + 0.75, width: lineW * 0.62, height: lineH)
+    ctx.addPath(CGPath(roundedRect: front, cornerWidth: radius, cornerHeight: radius, transform: nil))
+    ctx.addPath(CGPath(roundedRect: line1, cornerWidth: lineH / 2, cornerHeight: lineH / 2, transform: nil))
+    ctx.addPath(CGPath(roundedRect: line2, cornerWidth: lineH / 2, cornerHeight: lineH / 2, transform: nil))
+    ctx.fillPath(using: .evenOdd)
     ctx.endPDFPage()
     ctx.closePDF()
 }
@@ -159,6 +190,19 @@ let appIconData = try JSONSerialization.data(withJSONObject: appIconJSON, option
 try appIconData.write(to: appIconDir.appendingPathComponent("Contents.json"))
 
 writeMenuBarPDF(url: menuBarDir.appendingPathComponent("MenuBarIcon.pdf"))
+
+let aboutDir = root.appendingPathComponent("Clip/Assets.xcassets/AboutIcon.imageset")
+try FileManager.default.createDirectory(at: aboutDir, withIntermediateDirectories: true)
+try writePNG(size: 512, url: aboutDir.appendingPathComponent("AboutIcon.png"))
+let aboutJSON: [String: Any] = [
+    "images": [[
+        "filename": "AboutIcon.png",
+        "idiom": "universal"
+    ]],
+    "info": ["author": "xcode", "version": 1]
+]
+let aboutData = try JSONSerialization.data(withJSONObject: aboutJSON, options: [.prettyPrinted, .sortedKeys])
+try aboutData.write(to: aboutDir.appendingPathComponent("Contents.json"))
 let menuJSON: [String: Any] = [
     "images": [[
         "filename": "MenuBarIcon.pdf",
@@ -175,3 +219,4 @@ try menuData.write(to: menuBarDir.appendingPathComponent("Contents.json"))
 
 print("Wrote app icons to \(appIconDir.path)")
 print("Wrote menu bar icon to \(menuBarDir.path)")
+print("Wrote about icon to \(aboutDir.path)")

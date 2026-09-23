@@ -24,13 +24,24 @@ enum AppInfo {
         Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as? String ?? ""
     }
 
-    static let homepageURL = URL(string: "https://github.com/djui/Clip")!
+    static let homepageURL = URL(string: "https://github.com/djui/clip")!
+
+    static var icon: NSImage {
+        if let named = NSImage(named: "AboutIcon") {
+            return named
+        }
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+        return NSApplication.shared.applicationIconImage
+    }
 }
 
 struct AboutView: View {
     var body: some View {
         VStack(spacing: 14) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
+            Image(nsImage: AppInfo.icon)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 72, height: 72)
