@@ -1,10 +1,10 @@
 #!/usr/bin/env swift
 import AppKit
 
-// Generates Mac app icons plus a template menu-bar PDF.
+// Generates Mac app icons, About/README finished icons, and a template menu-bar PDF.
 // Run from the repo root: swift scripts/generate_icons.swift
 
-func writePNG(size: Int, url: URL) throws {
+func makeBitmap(size: Int) -> NSBitmapImageRep {
     guard let rep = NSBitmapImageRep(
         bitmapDataPlanes: nil,
         pixelsWide: size,
@@ -20,6 +20,11 @@ func writePNG(size: Int, url: URL) throws {
         fatalError("Unable to create bitmap")
     }
     rep.size = NSSize(width: size, height: size)
+    return rep
+}
+
+func writePNG(size: Int, url: URL) throws {
+    let rep = makeBitmap(size: size)
     NSGraphicsContext.saveGraphicsState()
     guard let context = NSGraphicsContext(bitmapImageRep: rep) else {
         fatalError("Unable to create graphics context")
@@ -30,6 +35,90 @@ func writePNG(size: Int, url: URL) throws {
     NSGraphicsContext.restoreGraphicsState()
     guard let data = rep.representation(using: .png, properties: [:]) else {
         fatalError("Unable to encode PNG")
+    }
+    try data.write(to: url)
+}
+
+enum FinishedIconAppearance {
+    case light
+    case dark
+
+    var shadowColor: CGColor {
+        switch self {
+        case .light:
+            return srgb(0.05, 0.08, 0.18, 0.42)
+        case .dark:
+            return srgb(0, 0, 0, 0.72)
+        }
+    }
+}
+
+/// Renders a Dock-style icon: artwork clipped to a continuous corner mask, with padding and drop shadow.
+func writeFinishedPNG(canvasSize: Int, iconFraction: CGFloat = 0.78, appearance: FinishedIconAppearance, url: URL) throws {
+    let canvas = CGFloat(canvasSize)
+    let iconSize = canvas * iconFraction
+    let origin = (canvas - iconSize) / 2
+    let iconRect = CGRect(x: origin, y: origin, width: iconSize, height: iconSize)
+    // Continuous-corner approximation used by macOS app icons (~22.37% of edge).
+    let corner = iconSize * 0.2237
+
+    let artworkRep = makeBitmap(size: Int(iconSize.rounded()))
+    NSGraphicsContext.saveGraphicsState()
+    guard let artworkContext = NSGraphicsContext(bitmapImageRep: artworkRep) else {
+        fatalError("Unable to create artwork context")
+    }
+    artworkContext.imageInterpolation = .high
+    NSGraphicsContext.current = artworkContext
+    drawIcon(size: CGFloat(artworkRep.pixelsWide))
+    NSGraphicsContext.restoreGraphicsState()
+
+    let artwork = NSImage(size: NSSize(width: iconSize, height: iconSize))
+    artwork.addRepresentation(artworkRep)
+
+    let canvasRep = makeBitmap(size: canvasSize)
+    NSGraphicsContext.saveGraphicsState()
+    guard let context = NSGraphicsContext(bitmapImageRep: canvasRep) else {
+        fatalError("Unable to create canvas context")
+    }
+    context.imageInterpolation = .high
+    NSGraphicsContext.current = context
+    let ctx = context.cgContext
+    ctx.setShouldAntialias(true)
+    ctx.interpolationQuality = .high
+    ctx.clear(CGRect(x: 0, y: 0, width: canvas, height: canvas))
+
+    let mask = CGPath(roundedRect: iconRect, cornerWidth: corner, cornerHeight: corner, transform: nil)
+
+    // Cast a drop shadow from a temporary silhouette, then clear the fill so only the shadow remains.
+    ctx.saveGState()
+    // Bitmap contexts are flipped (positive Y down); positive offset casts the shadow below the icon.
+    ctx.setShadow(
+        offset: CGSize(width: 0, height: iconSize * 0.04),
+        blur: iconSize * 0.1,
+        color: appearance.shadowColor
+    )
+    ctx.addPath(mask)
+    ctx.setFillColor(srgb(0, 0, 0, 1))
+    ctx.fillPath()
+    ctx.restoreGState()
+
+    ctx.saveGState()
+    ctx.addPath(mask)
+    ctx.setBlendMode(.clear)
+    ctx.fillPath()
+    ctx.restoreGState()
+
+    // Clipped artwork.
+    ctx.saveGState()
+    ctx.addPath(mask)
+    ctx.clip()
+    let nsRect = NSRect(x: iconRect.origin.x, y: iconRect.origin.y, width: iconRect.width, height: iconRect.height)
+    artwork.draw(in: nsRect, from: .zero, operation: .sourceOver, fraction: 1)
+    ctx.restoreGState()
+
+    NSGraphicsContext.restoreGraphicsState()
+    guard let data = canvasRep.representation(using: .png, properties: [:]) else {
+        fatalError("Unable to encode finished PNG")
     }
     try data.write(to: url)
 }
@@ -193,7 +282,11 @@ writeMenuBarPDF(url: menuBarDir.appendingPathComponent("MenuBarIcon.pdf"))
 
 let aboutDir = root.appendingPathComponent("Clip/Assets.xcassets/AboutIcon.imageset")
 try FileManager.default.createDirectory(at: aboutDir, withIntermediateDirectories: true)
-try writePNG(size: 512, url: aboutDir.appendingPathComponent("AboutIcon.png"))
+try writeFinishedPNG(
+    canvasSize: 512,
+    appearance: .light,
+    url: aboutDir.appendingPathComponent("AboutIcon.png")
+)
 let aboutJSON: [String: Any] = [
     "images": [[
         "filename": "AboutIcon.png",
@@ -217,6 +310,20 @@ let menuJSON: [String: Any] = [
 let menuData = try JSONSerialization.data(withJSONObject: menuJSON, options: [.prettyPrinted, .sortedKeys])
 try menuData.write(to: menuBarDir.appendingPathComponent("Contents.json"))
 
+let docsDir = root.appendingPathComponent("docs")
+try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
+try writeFinishedPNG(
+    canvasSize: 640,
+    appearance: .light,
+    url: docsDir.appendingPathComponent("app-icon-light.png")
+)
+try writeFinishedPNG(
+    canvasSize: 640,
+    appearance: .dark,
+    url: docsDir.appendingPathComponent("app-icon-dark.png")
+)
+
 print("Wrote app icons to \(appIconDir.path)")
 print("Wrote menu bar icon to \(menuBarDir.path)")
 print("Wrote about icon to \(aboutDir.path)")
+print("Wrote README icons to \(docsDir.path)")

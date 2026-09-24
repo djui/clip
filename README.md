@@ -1,8 +1,13 @@
+<p align="center">
+  <img src="docs/app-icon-light.png" width="128" alt="Clip" class="gh-light-mode-only" />
+  <img src="docs/app-icon-dark.png" width="128" alt="Clip" class="gh-dark-mode-only" />
+</p>
+
 # Clip
 
 A macOS menu bar app that keeps clipboard history on this Mac.
 
-Hold **⌘V** to open history next to the pointer. A quick **⌘V** still pastes. History stays in Application Support and is copied from Notch the first time Clip launches, when that history exists.
+Hold **⌘V** to open history next to the pointer. A quick **⌘V** still pastes. History stays in Application Support.
 
 Requires **macOS 15** or later.
 
@@ -10,7 +15,7 @@ Requires **macOS 15** or later.
 
 - Search, pin, and paste clips. **⌘1–⌘9** paste a row. **↩** pastes the selection. **⌘⌫** deletes it.
 - Optional menu bar icon and launch at login.
-- Optional extra shortcut, left unset so it does not fight Notch’s **⌘⇧V**.
+- Optional extra keyboard shortcut.
 
 ## Permissions
 

@@ -44,7 +44,8 @@ struct AboutView: View {
             Image(nsImage: AppInfo.icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 72, height: 72)
+                .scaledToFit()
+                .frame(width: 96, height: 96)
 
             VStack(spacing: 4) {
                 Text(AppInfo.name)
